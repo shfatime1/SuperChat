@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 class Schema(BaseModel):
-    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    model_config = ConfigDict(allow_inf_nan=False)
 
 
 class Domain(str, Enum):
@@ -36,7 +36,7 @@ class FlightParameters(Schema):
     departure_date_text: str | None = None
     return_date: Date | None = None
     return_date_text: str | None = None
-    passengers: int | None = Field(default=None, gt=0)
+    passengers: int | None = Field(default=None, ge=1)
     min_price_azn: float | None = Field(default=None, ge=0)
     max_price_azn: float | None = Field(default=None, ge=0)
     stops: int | None = Field(default=None, ge=0)
@@ -59,7 +59,7 @@ class ShoppingParameters(Schema):
     min_price_azn: float | None = Field(default=None, ge=0)
     max_price_azn: float | None = Field(default=None, ge=0)
     color: str | None = None
-    quantity: int | None = Field(default=None, gt=0)
+    quantity: int | None = Field(default=None, ge=1)
     in_stock: bool | None = None
     sort_by: str | None = None
     product_ids: list[str] | None = None
@@ -77,7 +77,7 @@ class CinemaParameters(Schema):
     date: Date | None = None
     date_text: str | None = None
     time: str | None = None
-    tickets: int | None = Field(default=None, gt=0)
+    tickets: int | None = Field(default=None, ge=1)
     max_price_azn: float | None = Field(default=None, ge=0)
     movie_ids: list[str] | None = None
     cinema_ids: list[str] | None = None

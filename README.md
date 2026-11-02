@@ -66,7 +66,7 @@ Friday = November 6, Saturday = November 7; next Friday = November 13.
 | `GEMINI_API_KEY` | unset | Server-side credential only |
 | `GEMINI_MODEL` | `gemini-flash-latest` | Configurable model alias |
 | `SUPERCHAT_ROUTING_MODE` | `auto` | `auto`, `offline`, or `strict` |
-| `GEMINI_TIMEOUT_MS` | `8000` | Routing call timeout |
+| `GEMINI_TIMEOUT_MS` | `30000` | Routing call timeout |
 | `GEMINI_RESPONSE_TIMEOUT_MS` | `4000` | Response plan timeout |
 | `COOKIE_SECURE` | `false` | Set `true` on HTTPS hosting |
 

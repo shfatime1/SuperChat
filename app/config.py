@@ -17,7 +17,7 @@ class Settings:
     model: str = "gemini-flash-latest"
     data_dir: Path = PROJECT_ROOT / "data"
     routing_mode: str = "auto"
-    gemini_timeout_ms: int = 8000
+    gemini_timeout_ms: int = 30000
     response_timeout_ms: int = 4000
     secure_cookies: bool = False
 
@@ -28,7 +28,7 @@ class Settings:
             api_key=(os.getenv("GEMINI_API_KEY") or "").strip() or None,
             model=(os.getenv("GEMINI_MODEL") or "").strip() or "gemini-flash-latest",
             routing_mode=(os.getenv("SUPERCHAT_ROUTING_MODE") or "auto").strip().lower() or "auto",
-            gemini_timeout_ms=int(os.getenv("GEMINI_TIMEOUT_MS", "8000")),
+            gemini_timeout_ms=int(os.getenv("GEMINI_TIMEOUT_MS", "30000")),
             response_timeout_ms=int(os.getenv("GEMINI_RESPONSE_TIMEOUT_MS", "4000")),
             secure_cookies=os.getenv("COOKIE_SECURE", "false").lower() == "true",
         )

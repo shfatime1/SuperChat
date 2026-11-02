@@ -59,6 +59,16 @@ Categories:
   clarifying question in clarification. Leave domains and intents empty.
 - out_of_scope: unrelated requests such as weather or coding. Empty domains/intents.
 
+Standalone domain requests:
+- "shopping", "shop", "alış-veriş" -> category="shopping",
+  domains=["shopping"], intent="search", parameters={{}}.
+- "flights", "flight tickets", "uçuşlar", "biletlər" -> category="flights",
+  domains=["flights"], intent="search", parameters={{}}.
+- "cinema", "movies", "kino", "filmlər" -> category="cinema",
+  domains=["cinema"], intent="search", parameters={{}}.
+These requests are NOT ambiguous. Never ask the user to choose a domain
+they already named. Ask for specific preferences only when necessary.
+
 Fresh explicit topics override the last active domain. Missing search parameters do
 not make a clear domain ambiguous: 'Flights to Istanbul' is flights with no origin
 or date. For a follow-up with one clear contextual target, provide that domain and
@@ -121,15 +131,18 @@ class Router(Protocol):
 def product_search_query(message: str) -> str | None:
     """Keep explicit search names intact instead of broadening them to a category."""
     text = message.casefold().strip(" .?!")
-    text = re.sub(r"^(?:please )?(?:show(?: me)?|find(?: me)?|search for|do you have|i need|looking for)\s+", "", text)
+    text = re.sub(
+    r"^(?:please\s+)?(?:show(?:\s+me)?|find(?:\s+me)?|search\s+for|do\s+you\s+have|i\s+need|looking\s+for|i\s+want\s+to\s+buy|i\s+want\s+to\s+see|i\s+am\s+looking\s+for)\s+",
+    "",text,)
     text = re.split(r"\s+(?:under|below|over|above|up to|cheapest first|most expensive first|price ascending|price descending)\b", text)[0]
     text = re.sub(r"^(?:a|an|the)\s+", "", text)
-    if text in {"products", "all products", "the catalog", "catalog", "all available products"}:
+    if text in {"products", "all products", "the catalog", "catalog", "all available products", "shopping", "shop", "alış-veriş"}:
         return ""
     text = re.sub(r"^products?\s+(?:named|called|matching)\s+", "", text)
     # Only a simple noun phrase: references and operations use the existing router.
     if re.search(r"\b(cart|add|remove|reserve|compare|back|first|second|third|one|stock|details|and|or)\b", text):
         return None
+    text = re.sub(r"^(?:i\s+want\s+to\s+buy|i\s+want\s+to\s+see|i\s+need|i\s+am\s+looking\s+for)\s+", "", text)
     return text or None
 
 
@@ -155,22 +168,26 @@ class GeminiRouter:
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_INSTRUCTION,
                         response_mime_type="application/json",
-                        response_json_schema=RoutingResult.model_json_schema(),
                         temperature=0,
                     ),
                 )
         except Exception as exc:
             # Provider errors can contain credentials/URLs; never return their text.
             reason, status = safe_provider_failure(exc)
+            print("GEMINI ERROR:", type(exc).__name__, str(exc), flush=True)
             logger.warning("gemini_routing_failed reason=%s http_status=%s timeout_ms=%s",
                            reason, status, self.settings.gemini_timeout_ms)
             raise RouterUnavailable("Routing service is temporarily unavailable") from None
         try:
+            print("GEMINI RESPONSE:", (response.text or "")[:1500], flush=True)
             result = RoutingResult.model_validate_json(response.text or "")
             result.source = "gemini"
-        except (ValidationError, ValueError, TypeError, AttributeError):
+        except (ValidationError, ValueError, TypeError, AttributeError) as exc:
+            print("VALIDATION ERROR:", str(exc)[:2000], flush=True)
             logger.warning("gemini_routing_failed reason=invalid_structured_output")
-            raise InvalidRouterResponse("Routing service returned an invalid result") from None
+            raise InvalidRouterResponse(
+                "Routing service returned an invalid result"
+            ) from None
         if result.category == Category.SHOPPING:
             query = product_search_query(message)
             for intent in result.intents:
