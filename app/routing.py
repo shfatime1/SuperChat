@@ -152,6 +152,7 @@ class GeminiRouter:
 
     def route(self, message: str, state: SessionState) -> RoutingResult:
         if not self.settings.api_key:
+            logger.warning("GEMINI_KEY_MISSING")
             raise RouterUnavailable("GEMINI_API_KEY is not configured")
         context = state.model_dump(mode="json", exclude={"history", "session_id"})
         context["recent_history"] = [turn.model_dump(mode="json", exclude_none=True, exclude={"results"})
