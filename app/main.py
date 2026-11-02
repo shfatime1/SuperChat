@@ -71,7 +71,9 @@ def create_app(settings: Settings | None = None, router: Router | None = None) -
     @application.get("/api/client")
     def client_info(request: Request):
         return {"namespace": sha256(request.state.owner.encode()).hexdigest()[:24],
-                "routing_mode": settings.routing_mode, "reference_date": "2026-11-02"}
+                "routing_mode": settings.routing_mode, "reference_date": "2026-11-02",
+                "gemini_configured": bool(settings.api_key),
+                "routing_status": service.router.status() if isinstance(service.router, ResilientRouter) else "custom"}
 
     @application.get("/health")
     def health():

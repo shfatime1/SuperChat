@@ -5,6 +5,7 @@ to the user instead of guessing. Domain services remain the authority for all da
 """
 
 import re
+import logging
 import time
 from threading import Lock
 
@@ -16,6 +17,7 @@ from app.schemas import RoutingResult
 
 WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 NUMBER = r"(\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
+logger = logging.getLogger(__name__)
 PRODUCTS = ("headphones", "earbuds", "laptops", "laptop", "smartphone", "phone", "smartwatch", "speaker",
             "running shoes", "backpack", "coffee machine", "board game")
 
@@ -254,6 +256,18 @@ class ResilientRouter:
         self.settings, self.primary, self.local = settings, GeminiRouter(settings), LocalRouter(repositories)
         self._unavailable_until = 0.0
         self._lock = Lock()
+        if settings.routing_mode == "offline":
+            logger.warning("gemini_routing_disabled reason=offline_mode")
+        elif not settings.api_key:
+            logger.warning("gemini_routing_disabled reason=missing_api_key")
+
+    def status(self):
+        if self.settings.routing_mode == "offline":
+            return "offline"
+        if not self.settings.api_key:
+            return "missing_key"
+        with self._lock:
+            return "cooldown" if time.monotonic() < self._unavailable_until else "ready"
 
     def route(self, message, state):
         if self.settings.routing_mode == "strict":
@@ -265,6 +279,7 @@ class ResilientRouter:
         try:
             return self.primary.route(message, state)
         except (RouterUnavailable, InvalidRouterResponse):
+            logger.warning("gemini_routing_fallback reason=primary_failure cooldown_seconds=60")
             with self._lock:
                 self._unavailable_until = time.monotonic() + 60
             return self.local.route(message, state)

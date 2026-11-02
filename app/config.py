@@ -25,9 +25,9 @@ class Settings:
     def from_env(cls) -> "Settings":
         load_dotenv(PROJECT_ROOT / ".env", override=False)
         return cls(
-            api_key=os.getenv("GEMINI_API_KEY") or None,
-            model=os.getenv("GEMINI_MODEL") or "gemini-flash-latest",
-            routing_mode=os.getenv("SUPERCHAT_ROUTING_MODE", "auto").lower(),
+            api_key=(os.getenv("GEMINI_API_KEY") or "").strip() or None,
+            model=(os.getenv("GEMINI_MODEL") or "").strip() or "gemini-flash-latest",
+            routing_mode=(os.getenv("SUPERCHAT_ROUTING_MODE") or "auto").strip().lower() or "auto",
             gemini_timeout_ms=int(os.getenv("GEMINI_TIMEOUT_MS", "8000")),
             response_timeout_ms=int(os.getenv("GEMINI_RESPONSE_TIMEOUT_MS", "4000")),
             secure_cookies=os.getenv("COOKIE_SECURE", "false").lower() == "true",

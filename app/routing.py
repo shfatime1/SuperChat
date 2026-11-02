@@ -1,6 +1,7 @@
 """Gemini classifies/extracts only; no catalogue facts or business actions are generated."""
 
 import json
+import logging
 import re
 from typing import Protocol
 
@@ -13,6 +14,30 @@ from app.dates import resolve_date
 from app.schemas import (Category, CinemaIntent, Domain, FlightIntent, RoutingResult,
                          ShoppingIntent)
 from app.state import SessionState
+
+logger = logging.getLogger(__name__)
+
+
+def safe_provider_failure(exc):
+    """Only allowlisted labels and numeric status; never log exception text/URLs."""
+    code = getattr(exc, "code", None)
+    if type(code) is not int or not 100 <= code <= 599:
+        code = None
+    if code in {408, 504} or type(exc).__name__ in {"ReadTimeout", "ConnectTimeout", "TimeoutError", "TimeoutException"}:
+        reason = "timeout"
+    elif code in {401, 403}:
+        reason = "credentials_or_permissions"
+    elif code == 404:
+        reason = "model_not_found"
+    elif code == 429:
+        reason = "quota_or_rate_limit"
+    elif code == 400:
+        reason = "request_rejected"
+    elif code and code >= 500:
+        reason = "provider_unavailable"
+    else:
+        reason = "sdk_or_network_error"
+    return reason, code
 
 SYSTEM_INSTRUCTION = f"""You are SuperChat's routing and intent extraction component.
 Classify the current user message. Return JSON matching the supplied schema, never
@@ -134,13 +159,17 @@ class GeminiRouter:
                         temperature=0,
                     ),
                 )
-        except Exception:
+        except Exception as exc:
             # Provider errors can contain credentials/URLs; never return their text.
+            reason, status = safe_provider_failure(exc)
+            logger.warning("gemini_routing_failed reason=%s http_status=%s timeout_ms=%s",
+                           reason, status, self.settings.gemini_timeout_ms)
             raise RouterUnavailable("Routing service is temporarily unavailable") from None
         try:
             result = RoutingResult.model_validate_json(response.text or "")
             result.source = "gemini"
         except (ValidationError, ValueError, TypeError, AttributeError):
+            logger.warning("gemini_routing_failed reason=invalid_structured_output")
             raise InvalidRouterResponse("Routing service returned an invalid result") from None
         if result.category == Category.SHOPPING:
             query = product_search_query(message)
