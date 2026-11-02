@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+google-genai
+python-dotenv
+pytest
+httpx
+pydantic>=2.9,<3
